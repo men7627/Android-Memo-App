@@ -1,5 +1,6 @@
 package com.example.android_memo_app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
@@ -19,16 +20,8 @@ class ListActivity : AppCompatActivity() {
         setSupportActionBar(toolbar)
 
         fab.setOnClickListener {
-//            val intent = Intent(applicationContext, DetailActivity::class.java)
-//            startActivity(intent)
-            viewModel!!.let{
-                var memoData = MemoData()
-                memoData.title = "제목 테스트"
-                memoData.summary = "요약내용 테스트"
-                memoData.createdAt = Date()
-
-                it.addMemo(memoData)
-            }
+            val intent = Intent(applicationContext, DetailActivity::class.java)
+            startActivity(intent)
         }
 
         val fragmentTransaction = supportFragmentManager.beginTransaction()
