@@ -47,7 +47,7 @@ class DetailActivity : AppCompatActivity() {
                 .setTitle("제목을 입력하세요")
                 .setView(view)
                 .setNegativeButton("취소", null)
-                .setNegativeButton("확인") { dialog, which ->
+                .setPositiveButton("확인") { dialog, which ->
                     supportActionBar?.title = titleEdit.text.toString()
                 }.show()
         }
