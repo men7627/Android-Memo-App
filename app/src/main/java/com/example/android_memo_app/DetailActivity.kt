@@ -1,10 +1,21 @@
 package com.example.android_memo_app
 
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
+import android.location.Criteria
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.os.Bundle
+import android.provider.Settings
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import com.google.android.material.snackbar.Snackbar
@@ -12,6 +23,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.example.android_memo_app.data.DetailViewModel
+import com.naver.maps.geometry.LatLng
+import com.naver.maps.map.CameraUpdate
+import com.naver.maps.map.MapView
 import com.takisoft.datetimepicker.DatePickerDialog
 import com.takisoft.datetimepicker.TimePickerDialog
 import kotlinx.android.synthetic.main.activity_detail.*
@@ -37,11 +51,12 @@ class DetailActivity : AppCompatActivity() {
                 .get(DetailViewModel::class.java)
         }
 
-        viewModel!!.let {
-            it.title.observe(this, Observer { supportActionBar?.title = it })
-            it.content.observe(this, Observer { contentEdit.setText(it) })
-            it.alarmTime.observe(this, Observer { alarmInfoView.setAlarmDate(it) })
-        }
+        viewModel!!.memoLiveData.observe(this, Observer {
+            supportActionBar?.title = it.title
+            contentEdit.setText(it.content)
+            alarmInfoView.setAlarmDate(it.alarmTime)
+            locationInfoView.setLocation(it.latitude, it.longitude)
+        })
 
         val memoId = intent.getStringExtra("MEMO_ID")
         if (memoId != null) viewModel!!.loadMemo(memoId)
@@ -57,7 +72,37 @@ class DetailActivity : AppCompatActivity() {
                 .setPositiveButton("확인") { dialog, which ->
                     supportActionBar?.title = titleEdit.text.toString()
                     toolbarLayout.title = titleEdit.text.toString()
+                    viewModel!!.memoData.title = titleEdit.text.toString()
                 }.show()
+        }
+
+        contentEdit.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                viewModel!!.memoData.content = s.toString()
+            }
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+
+        })
+
+        locationInfoView.setOnClickListener {
+            val latitude = viewModel!!.memoData.latitude
+            val longitude = viewModel!!.memoData.longitude
+
+            if (!(latitude == 0.0 && longitude == 0.0)) {
+                val mapView = MapView(this)
+                mapView.getMapAsync {
+                    val latitude = viewModel!!.memoData.latitude
+                    val longitude = viewModel!!.memoData.longitude
+                    val cameraUpdate = CameraUpdate.scrollTo(LatLng(latitude, longitude))
+                    it.moveCamera(cameraUpdate)
+                }
+                AlertDialog.Builder(this)
+                    .setView(mapView)
+                    .show()
+            }
         }
     }
 
@@ -86,6 +131,7 @@ class DetailActivity : AppCompatActivity() {
         return true
     }
 
+    @SuppressLint("MissingPermission")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_share -> {
@@ -99,7 +145,7 @@ class DetailActivity : AppCompatActivity() {
             }
 
             R.id.menu_alarm -> {
-                if (viewModel?.alarmTime?.value!!.after(Date())) {
+                if (viewModel?.memoData?.alarmTime!!.after(Date())) {
                     AlertDialog.Builder(this)
                         .setTitle("안내")
                         .setMessage("기존에 알람이 설정되어 있습니다. 삭제 또는 재설정할 수 있습니다.")
@@ -110,6 +156,66 @@ class DetailActivity : AppCompatActivity() {
                     openDateDialog()
                 }
             }
+
+            R.id.menu_location -> {
+                AlertDialog.Builder(this)
+                    .setTitle("안내")
+                    .setMessage("현재 위치를 메모에 저장하거나 삭제할 수 있습니다.")
+                    .setPositiveButton("위치지정") { dialog, which ->
+                        val locationManager =
+                            getSystemService(Context.LOCATION_SERVICE) as LocationManager
+                        val isGPSEnabled =
+                            locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+                        val isNetWorkEnabled =
+                            locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+
+                        if (!isGPSEnabled && !isNetWorkEnabled) {
+                            Snackbar.make(
+                                toolbarLayout,
+                                "폰의 위치기능을 켜야 기능을 사용할 수 있습니다.",
+                                Snackbar.LENGTH_LONG
+                            )
+                                .setAction("설정", View.OnClickListener {
+                                    val goToSettings =
+                                        Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                                    startActivity(goToSettings)
+                                }).show()
+                        } else {
+                            val criteria = Criteria()
+                            criteria.accuracy = Criteria.ACCURACY_MEDIUM
+                            criteria.powerRequirement = Criteria.POWER_MEDIUM
+
+                            locationManager.requestSingleUpdate(
+                                criteria,
+                                object : LocationListener {
+                                    override fun onLocationChanged(location: Location?) {
+                                        location?.run {
+                                            viewModel!!.setLocation(latitude, longitude)
+                                        }
+                                    }
+
+                                    override fun onStatusChanged(
+                                        provider: String?,
+                                        status: Int,
+                                        extras: Bundle?
+                                    ) {
+                                    }
+
+                                    override fun onProviderEnabled(provider: String?) {
+                                    }
+
+                                    override fun onProviderDisabled(provider: String?) {
+                                    }
+
+                                },
+                                null
+                            )
+                        }
+                    }
+                    .setNegativeButton("삭제", DialogInterface.OnClickListener { dialog, which ->
+                        viewModel!!.setLocation(0.0, 0.0)
+                    }).show()
+            }
         }
         return super.onOptionsItemSelected(item)
     }
@@ -118,9 +224,7 @@ class DetailActivity : AppCompatActivity() {
         super.onBackPressed()
 
         viewModel?.addOrUpdateMemo(
-            this,
-            supportActionBar?.title.toString(),
-            contentEdit.text.toString()
+            this
         )
     }
 }

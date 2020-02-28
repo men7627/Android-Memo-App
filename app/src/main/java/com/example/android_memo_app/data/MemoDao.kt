@@ -20,16 +20,13 @@ class MemoDao(private val realm: Realm) {
             .findFirst() as MemoData
     }
 
-    fun addOrUpdateMemo(memoData: MemoData, title: String, content: String, alarmTime: Date) {
+    fun addOrUpdateMemo(memoData: MemoData) {
         realm.executeTransaction {
-            memoData.title = title
-            memoData.content = content
             memoData.createdAt = Date()
-            memoData.alarmTime = alarmTime
 
-            if(content.length > 100) memoData.summary = content.substring(0..100)
-            else memoData.summary = content
-            if(!memoData.isManaged) it.copyToRealm(memoData)
+            if (memoData.content.length > 100) memoData.summary = memoData.content.substring(0..100)
+            else memoData.summary = memoData.content
+            if (!memoData.isManaged) it.copyToRealm(memoData)
         }
     }
 
