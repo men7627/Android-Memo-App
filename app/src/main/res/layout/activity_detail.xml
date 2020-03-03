@@ -55,7 +55,18 @@
                     android:layout_marginStart="24dp"
                     android:layout_marginLeft="24dp"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/alarmInfoView" />
+                    app:layout_constraintTop_toBottomOf="@+id/alarmInfoView">
+
+                </com.example.android_memo_app.LocationInfoView>
+
+                <com.example.android_memo_app.WeatherInfoView
+                    android:id="@+id/weatherInfoView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="24dp"
+                    android:layout_marginLeft="24dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/locationInfoView" />
 
             </androidx.constraintlayout.widget.ConstraintLayout>
 

@@ -56,6 +56,7 @@ class DetailActivity : AppCompatActivity() {
             contentEdit.setText(it.content)
             alarmInfoView.setAlarmDate(it.alarmTime)
             locationInfoView.setLocation(it.latitude, it.longitude)
+            weatherInfoView.setWeather(it.weather)
         })
 
         val memoId = intent.getStringExtra("MEMO_ID")
@@ -215,6 +216,68 @@ class DetailActivity : AppCompatActivity() {
                     .setNegativeButton("삭제", DialogInterface.OnClickListener { dialog, which ->
                         viewModel!!.setLocation(0.0, 0.0)
                     }).show()
+            }
+            R.id.menu_weather -> {
+                AlertDialog.Builder(this)
+                    .setTitle("안내")
+                    .setMessage("현재 날씨를 메모에 저장하거나 삭제할 수 있습니다.")
+                    .setPositiveButton("날씨 가져오기", DialogInterface.OnClickListener { dialog, which ->
+                        val locationManager =
+                            getSystemService(Context.LOCATION_SERVICE) as LocationManager
+                        val isGPSEnabled =
+                            locationManager.isProviderEnabled((LocationManager.GPS_PROVIDER))
+                        val isNetworkEnabled =
+                            locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+
+                        if (!isGPSEnabled && !isNetworkEnabled) {
+                            Snackbar.make(
+                                toolbarLayout,
+                                "폰의 위치기능을 켜야 기능을 사용할 수 있습니다.",
+                                Snackbar.LENGTH_LONG
+                            )
+                                .setAction("설정", View.OnClickListener {
+                                    val goToSettings =
+                                        Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                                    startActivity(goToSettings)
+                                }).show()
+                        } else {
+                            val criteria = Criteria()
+                            criteria.accuracy = Criteria.ACCURACY_MEDIUM
+                            criteria.powerRequirement = Criteria.POWER_MEDIUM
+
+                            locationManager.requestSingleUpdate(
+                                criteria,
+                                object : LocationListener {
+                                    override fun onLocationChanged(location: Location?) {
+                                        location?.run {
+                                            viewModel!!.setWeather(latitude, longitude)
+                                        }
+                                    }
+
+                                    override fun onStatusChanged(
+                                        provider: String?,
+                                        status: Int,
+                                        extras: Bundle?
+                                    ) {
+                                        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+                                    }
+
+                                    override fun onProviderEnabled(provider: String?) {
+                                        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+                                    }
+
+                                    override fun onProviderDisabled(provider: String?) {
+                                        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+                                    }
+
+                                },
+                                null
+                            )
+                        }
+                    }).setNegativeButton("삭제", DialogInterface.OnClickListener { dialog, which ->
+                        viewModel!!.deleteWeather()
+                    })
+                    .show()
             }
         }
         return super.onOptionsItemSelected(item)
