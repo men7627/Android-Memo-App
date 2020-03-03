@@ -26,7 +26,7 @@ class MemoDao(private val realm: Realm) {
 
             if (memoData.content.length > 100) memoData.summary = memoData.content.substring(0..100)
             else memoData.summary = memoData.content
-            if (!memoData.isManaged) it.copyToRealm(memoData)
+            if (!memoData.isManaged) it.copyToRealmOrUpdate(memoData)
         }
     }
 

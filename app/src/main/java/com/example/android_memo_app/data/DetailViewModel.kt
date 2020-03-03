@@ -1,11 +1,15 @@
 package com.example.android_memo_app.data
 
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.realm.Realm
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
+import java.lang.Exception
 import java.util.*
 
 class DetailViewModel : ViewModel() {
@@ -58,7 +62,7 @@ class DetailViewModel : ViewModel() {
         memoDao.addOrUpdateMemo(memoData)
 
         AlarmTool.deleteAlarm(context, memoData.id)
-        if(memoData.alarmTime.after(Date())) {
+        if (memoData.alarmTime.after(Date())) {
             AlarmTool.addAlarm(context, memoData.id, memoData.alarmTime)
         }
     }
@@ -72,6 +76,27 @@ class DetailViewModel : ViewModel() {
         viewModelScope.launch {
             memoData.weather = WeatherData.getCurrentWeather(latitude, longitude)
             memoLiveData.value = memoData
+        }
+    }
+
+    fun setImageFile(context: Context, bitmap: Bitmap) {
+        val imageFIle = File(
+            context.getDir("image", Context.MODE_PRIVATE),
+            memoData.id + ".jpg"
+        )
+
+        if (imageFIle.exists()) imageFIle.delete()
+        try {
+            imageFIle.createNewFile()
+            val outPutStream = FileOutputStream(imageFIle)
+
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outPutStream)
+            outPutStream.close()
+
+            memoData.imageFile = memoData.id + ".jpg"
+            memoLiveData.value = memoData
+        } catch (e: Exception) {
+            println(e)
         }
     }
 }

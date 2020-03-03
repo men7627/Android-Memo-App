@@ -1,9 +1,11 @@
 package com.example.android_memo_app
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.location.Criteria
 import android.location.Location
 import android.location.LocationListener
@@ -20,6 +22,7 @@ import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.net.toUri
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.example.android_memo_app.data.DetailViewModel
@@ -30,6 +33,8 @@ import com.takisoft.datetimepicker.DatePickerDialog
 import com.takisoft.datetimepicker.TimePickerDialog
 import kotlinx.android.synthetic.main.activity_detail.*
 import kotlinx.android.synthetic.main.content_detail.*
+import java.io.File
+import java.lang.Exception
 import java.util.*
 
 class DetailActivity : AppCompatActivity() {
@@ -37,13 +42,16 @@ class DetailActivity : AppCompatActivity() {
     private var viewModel: DetailViewModel? = null
     private val dialogCalendar = Calendar.getInstance()
 
+    private val REQUSET_IMAGE = 100
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detail)
         setSupportActionBar(toolbar)
         fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                .setAction("Action", null).show()
+            val intent = Intent(Intent.ACTION_GET_CONTENT)
+            intent.type = "image/*"
+            startActivityForResult(intent, REQUSET_IMAGE)
         }
 
         viewModel = application!!.let {
@@ -57,6 +65,13 @@ class DetailActivity : AppCompatActivity() {
             alarmInfoView.setAlarmDate(it.alarmTime)
             locationInfoView.setLocation(it.latitude, it.longitude)
             weatherInfoView.setWeather(it.weather)
+
+            val imageFile = File(
+                getDir("image", Context.MODE_PRIVATE),
+                it.id + ".jpg"
+            )
+
+            bgImage.setImageURI(imageFile.toUri())
         })
 
         val memoId = intent.getStringExtra("MEMO_ID")
@@ -289,5 +304,23 @@ class DetailActivity : AppCompatActivity() {
         viewModel?.addOrUpdateMemo(
             this
         )
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == REQUSET_IMAGE && resultCode == Activity.RESULT_OK) {
+            try {
+                val inputStream = data?.data?.let { contentResolver.openInputStream(it) }
+                inputStream?.let {
+                    val image = BitmapFactory.decodeStream(it)
+                    bgImage.setImageURI(null)
+                    image?.let { viewModel?.setImageFile(this, it) }
+                    it.close()
+                }
+            } catch (e: Exception) {
+                println(e)
+            }
+        }
     }
 }
