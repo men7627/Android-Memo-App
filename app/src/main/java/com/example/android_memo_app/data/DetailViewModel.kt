@@ -3,7 +3,9 @@ package com.example.android_memo_app.data
 import android.content.Context
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import io.realm.Realm
+import kotlinx.coroutines.launch
 import java.util.*
 
 class DetailViewModel : ViewModel() {
@@ -58,6 +60,18 @@ class DetailViewModel : ViewModel() {
         AlarmTool.deleteAlarm(context, memoData.id)
         if(memoData.alarmTime.after(Date())) {
             AlarmTool.addAlarm(context, memoData.id, memoData.alarmTime)
+        }
+    }
+
+    fun deleteWeather() {
+        memoData.weather = ""
+        memoLiveData.value = memoData
+    }
+
+    fun setWeather(latitude: Double, longitude: Double) {
+        viewModelScope.launch {
+            memoData.weather = WeatherData.getCurrentWeather(latitude, longitude)
+            memoLiveData.value = memoData
         }
     }
 }
